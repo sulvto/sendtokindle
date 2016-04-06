@@ -1,1 +1,1 @@
-# sendtokindle
+# sendemail
