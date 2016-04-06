@@ -28,7 +28,7 @@ app.on('ready', function() {
     mainWindow = new BrowserWindow({width: 400, height: 300});
 
     // and load the index.html of the app.
-    mainWindow.loadURL('file://' + __dirname + '/index.html');
+    mainWindow.loadURL('file://' + __dirname + '/app/index.html');
 
     // Open the DevTools.
     mainWindow.webContents.openDevTools();
@@ -60,7 +60,7 @@ ipcMain.on('asynchronous-message', function(event, arg) {
         console.log( arg.files[index].name);
         console.log( arg.files[index].path);
     }
-    sendAttachments.create(config).send(arg.to, arg.files);
+    sendAttachments.create(arg.config).send(arg.to, arg.files);
 });
 
 
