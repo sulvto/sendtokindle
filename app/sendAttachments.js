@@ -4,7 +4,7 @@ var nodemailer = require('nodemailer');
 exports.create = function (config, to, files) {
     this.callback = null;
     this.transporter = nodemailer.createTransport(config);
-    that.files = files;
+    this.files = files;
     this.mailOptions = {
         from: config.auth.user,
         to: to,

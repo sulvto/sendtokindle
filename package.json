@@ -2,12 +2,12 @@
     "name": "SendToKindle",
     "version": "0.1.0",
     "description": "Send To Kindle",
-    "main": "main.js",
+    "main": "app/main.js",
     "scripts": {
         "start": "electron ."
     },
     "dependencies": {
-        "nodemailer": "0.7.1",
+        "nodemailer": "2.0",
         "angular":"1.5"
     }
 }

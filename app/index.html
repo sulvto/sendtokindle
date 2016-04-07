@@ -4,15 +4,73 @@
     <meta charset="UTF-8">
     <title>Send To Kindle</title>
 </head>
-<body ng-app="main">
-<div ng-view></div>
+<body>
+<div id="mainDiv" style="">
+    <input id="file" type="file" multiple size="50"/>
+    <br/>
+    <br/>
+    <input id="toEmail" type="email" placeholder="to@Kindle" required/>
+    <br/>
+    <br/>
+    <button type="button" onclick="APP.showConfigureDiv()">Configure</button>
+    <button type="button" onclick="APP.send()">Send</button>
+</div>
+
+<div id="configureDiv" style="display: none">
+    <input id="fromEmail" type="email" placeholder="email"/>
+    <br/>
+    <br/>
+    <input id="fromEmailPassword" type="password" placeholder="password"/>
+    <br/>
+    <br/>
+    <button type="button" onclick="APP.showMainDiv()">password</button>
+</div>
 
 <script>
-    var angular = require('angular');
-
     const ipcRenderer = require('electron').ipcRenderer;
+    var APP = {};
 
-    var app = angular.module('main', []);
+    APP.showMainDiv = function () {
+        document.getElementById("mainDiv").setAttribute("style", "");
+        APP.hideConfigureDiv();
+    };
+    APP.hideMainDiv = function () {
+        document.getElementById("mainDiv").setAttribute("style", "display: none");
+    };
+    APP.showConfigureDiv = function () {
+        document.getElementById("configureDiv").setAttribute("style", "");
+        APP.hideMainDiv();
+    };
+    APP.hideConfigureDiv = function () {
+        document.getElementById("configureDiv").setAttribute("style", "display: none");
+    };
+
+
+    APP.send = function () {
+        var files = document.getElementById("file").files;
+        var sendFiles = [];
+        for (var i = 0, len = files.length; i < len; i++) {
+            var file = files[i];
+            sendFiles.push({
+                "name": file.name,
+                "path": file.path,
+                "size": file.size,
+                "type": file.type
+            });
+        }
+        ipcRenderer.send('asynchronous-message', {
+            "files": sendFiles,
+            "to": document.getElementById("toEmail").value,
+            "form": {
+                "email": document.getElementById("fromEmail").value,
+                "pass": document.getElementById("fromEmailPassword").value
+            }
+        });
+    };
+
+    APP.showConfigure = function () {
+        APP.configure = {};
+    };
 
 
 </script>
