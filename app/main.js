@@ -2,11 +2,29 @@
  * Created by sulvto on 16-4-6.
  */
 'use strict';
+var fs = require('fs');
 const emailServiceConfig = require('./emailServiceConfig.json');
 const sendAttachments = require('./sendAttachments.js');
 const electron = require('electron');
 const app = electron.app;  // Module to control application life.
 const BrowserWindow = electron.BrowserWindow;  // Module to create native browser window.
+
+//
+
+var userConfig = {
+    path: __dirname + "/../config.json",
+
+    get: function () {
+        var fileContent = fs.readFileSync(this.path, 'utf8');
+        return JSON.parse(fileContent);
+    },
+    set: function (content) {
+        if ("object" === typeof content) {
+            content = JSON.stringify(content);
+        }
+        fs.writeFileSync(this.path, content, 'utf8');
+    }
+};
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
@@ -46,31 +64,39 @@ app.on('ready', function () {
 //======================== ipc ===================================
 
 const ipcMain = electron.ipcMain;
+const ipcRenderer = electron.ipcRenderer;
+
 ipcMain.on('asynchronous-message', function (event, arg) {
+    var reply = function (content) {
+        event.sender.send('asynchronous-reply', content);
+    };
+
     var r = /^\w+@([A-z]+)\.\w+?$/g;
     var service = r.exec(arg.form.email)[1];
-    console.log(service);
     var config = emailServiceConfig[service];
     if (config) {
         config.auth = {
             "user": arg.form.email,
             "pass": arg.form.pass
         };
-        console.log(config);
         sendAttachments
             .create(config, arg.to, arg.files)
             .send(function (error, info) {
                 if (error) {
-                    console.log(error);
+                    reply({error: 2, message: '发送失败', cause: error})
                 } else {
-                    console.log('Message sent: ' + info.response);
+                    reply({error: 0, message: '发送成功'});
                 }
             });
     } else {
-        console.log("no config");
+        reply({error: 1, message: '没有相关配置'});
     }
 });
 
+ipcMain.on('ipc-configInfo-get', function (event, arg) {
+    event.sender.send('ipc-configInfo-reply', userConfig.get());
+});
 
-
-
+ipcMain.on('ipc-configInfo-set', function (event, arg) {
+    userConfig.set(arg);
+});

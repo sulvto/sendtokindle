@@ -9,7 +9,17 @@
     <input id="file" type="file" multiple size="50"/>
     <br/>
     <br/>
-    <input id="toEmail" type="email" placeholder="to@Kindle" required/>
+    <div id="toEmail">
+        <input id="inputToEmail" type="email" placeholder="to@Kindle" required/>
+        <select id="selectToEmail">
+        </select>
+    </div>
+    <br/>
+    <br/>
+    <input id="fromEmail" type="email" placeholder="email"/>
+    <br/>
+    <br/>
+    <input id="fromEmailPassword" type="password" placeholder="password"/>
     <br/>
     <br/>
     <button type="button" onclick="APP.showConfigureDiv()">Configure</button>
@@ -17,18 +27,17 @@
 </div>
 
 <div id="configureDiv" style="display: none">
-    <input id="fromEmail" type="email" placeholder="email"/>
-    <br/>
-    <br/>
-    <input id="fromEmailPassword" type="password" placeholder="password"/>
-    <br/>
-    <br/>
-    <button type="button" onclick="APP.showMainDiv()">password</button>
+    <table id="kindleEmails">
+    </table>
+
+    <button type="button" onclick="APP.showMainDiv()">Ok</button>
 </div>
 
 <script>
     const ipcRenderer = require('electron').ipcRenderer;
     var APP = {};
+
+    APP.inputToEmail = true;
 
     APP.showMainDiv = function () {
         document.getElementById("mainDiv").setAttribute("style", "");
@@ -40,9 +49,42 @@
     APP.showConfigureDiv = function () {
         document.getElementById("configureDiv").setAttribute("style", "");
         APP.hideMainDiv();
+        APP.showConfigInfo();
     };
     APP.hideConfigureDiv = function () {
         document.getElementById("configureDiv").setAttribute("style", "display: none");
+    };
+
+    APP.updateSelectToEmailOption = function () {
+        var toEmailElement = document.getElementById("toEmail");
+        var inputToEmailElement = document.getElementById("inputToEmail");
+        var selectToEmailElement = document.getElementById("selectToEmail");
+
+        if (APP.configure.kindleEmails && APP.configure.kindleEmails.length > 0) {
+            APP.inputToEmail = false;
+            if (inputToEmailElement) {
+                toEmailElement.removeChild(inputToEmailElement);
+            }
+
+            if (!selectToEmailElement) {
+                toEmailElement.innerHTML = "<select id=\"selectToEmail\"></select>";
+                selectToEmailElement = document.getElementById("selectToEmail");
+            }
+
+            var selectToEmailHtml = "";
+            for (var i = 0, len = APP.configure.kindleEmails.length; i < len; i++) {
+                selectToEmailHtml += "<option>" + APP.configure.kindleEmails[i].email + "</option>";
+            }
+            selectToEmailElement.innerHTML = selectToEmailHtml;
+        } else {
+            APP.inputToEmail = true;
+            if (!inputToEmailElement) {
+                toEmailElement.innerHTML = "<input id=\"inputToEmail\" type=\"email\" placeholder=\"to@Kindle\" required/>";
+            }
+            if (selectToEmailElement) {
+                toEmailElement.removeChild(selectToEmailElement);
+            }
+        }
     };
 
 
@@ -58,20 +100,82 @@
                 "type": file.type
             });
         }
+        var toEmail = document.getElementById(APP.inputToEmail?"inputToEmail":"selectToEmail").value;
+        for (var i = 0, len = APP.configure.kindleEmails.length; i < len; i++) {
+            if (toEmail === APP.configure.kindleEmails[i].email) {
+                APP.configure.kindleEmails[i].count++;
+                //inc kindleEmail count
+                APP.saveConfigInfo();
+                break;
+            }
+        }
         ipcRenderer.send('asynchronous-message', {
             "files": sendFiles,
-            "to": document.getElementById("toEmail").value,
+            "to": toEmail,
             "form": {
                 "email": document.getElementById("fromEmail").value,
                 "pass": document.getElementById("fromEmailPassword").value
             }
         });
+        ipcRenderer.on('asynchronous-reply', function (event, arg) {
+            alert(arg.message);
+            //TODO error
+            if (2 === arg.error) {
+                console.log(arg.cause);
+            }
+        });
+
     };
 
-    APP.showConfigure = function () {
-        APP.configure = {};
+    APP.showConfigInfo = function () {
+        var kindleEmailsTableContent = "<tr><th>email</th><th>count</th><th></th></tr>";
+        for (var i = 0, len = APP.configure.kindleEmails.length; i < len; i++) {
+            kindleEmailsTableContent += (
+                    "<tr>" +
+                    "<td>" + APP.configure.kindleEmails[i].email + "</td>" +
+                    "<td>" + APP.configure.kindleEmails[i].count + "</td>" +
+                    "<td><button type='button' onclick='APP.delKindleEmail(" + i + ")'>Delete</button></td>" +
+                    "</tr>"
+            );
+        }
+        kindleEmailsTableContent += "<tr><td><input id='newKindleEmailInput' type='email'> <button type='button' onclick='APP.addKindleEmail()'>Add</button></td></tr>";
+        document.getElementById("kindleEmails").innerHTML = kindleEmailsTableContent;
     };
 
+    APP.saveConfigInfo = function () {
+        ipcRenderer.send('ipc-configInfo-set', APP.configure);
+        APP.updateSelectToEmailOption();
+    };
+
+    APP.delKindleEmail = function (index) {
+        APP.configure.kindleEmails.splice(index, 1);
+        APP.showConfigInfo();
+        APP.saveConfigInfo();
+    };
+
+    APP.addKindleEmail = function () {
+        var newKindleEmail = document.getElementById("newKindleEmailInput").value;
+        if (newKindleEmail) {
+            for (var i = 0, len = APP.configure.kindleEmails.length; i < len; i++) {
+                if (newKindleEmail === APP.configure.kindleEmails[i].email) {
+                    return;
+                }
+            }
+            APP.configure.kindleEmails.push({"email": newKindleEmail, "count": 0});
+            APP.showConfigInfo();
+            APP.saveConfigInfo();
+        }
+    };
+
+    //================================ ipc configInfo =================================
+    ipcRenderer.send('ipc-configInfo-get');
+    ipcRenderer.on('ipc-configInfo-reply', function (event, arg) {
+        APP.configure = arg;
+        APP.configure.kindleEmails.sort(function (a, b) {
+            return a.count < b.count ? 1 : -1;
+        });
+        APP.updateSelectToEmailOption();
+    });
 
 </script>
 </body>
